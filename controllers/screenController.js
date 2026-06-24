@@ -361,9 +361,11 @@ exports.getPlayer = async (req, res) => {
         let whatsappEnabled = false;
         let whatsappLimitPerScreen = null;
         let whatsappSentCount = 0;
+        let appMode = "F1";
+        let rotation = "landscape";
         try {
             const configResult = await prisma.$queryRaw`
-                SELECT "playlistId", "heightCalibration", "heightCalibrationEnabled", "paymentAmount", "logoUrl", "flowDrawerEnabled", "flowDrawerSlotCount", "hideScreenId", "hideAppMargin",
+                SELECT "playlistId", "heightCalibration", "heightCalibrationEnabled", "paymentAmount", "logoUrl", "flowDrawerEnabled", "flowDrawerSlotCount", "hideScreenId", "hideAppMargin", "appMode", "rotation",
                        "flowDrawerImage1Url", "flowDrawerImage2Url", "flowDrawerImage3Url", "flowDrawerImage4Url", "flowDrawerImage5Url"
                 FROM "AdscapePlayer" 
                 WHERE "screenId" = ${String(screenId)} 
@@ -394,6 +396,12 @@ exports.getPlayer = async (req, res) => {
                 }
                 if (configResult[0].hideAppMargin !== null && configResult[0].hideAppMargin !== undefined) {
                     hideAppMargin = Boolean(configResult[0].hideAppMargin);
+                }
+                if (configResult[0].appMode !== null && configResult[0].appMode !== undefined) {
+                    appMode = String(configResult[0].appMode);
+                }
+                if (configResult[0].rotation !== null && configResult[0].rotation !== undefined) {
+                    rotation = String(configResult[0].rotation);
                 }
 
                 // Get individual URL fields
@@ -476,6 +484,8 @@ exports.getPlayer = async (req, res) => {
                 flowDrawerSlots: flowDrawerSlots,
                 hideScreenId: hideScreenId,
                 hideAppMargin: hideAppMargin,
+                appMode: appMode,
+                rotation: rotation,
                 lastSeen: player.lastSeen,
                 isActive: player.isActive,
                 isEnabled: player.isActive, // Also include isEnabled for Android app compatibility
@@ -523,7 +533,8 @@ exports.getAllPlayers = async (req, res) => {
                         "screenWidth", "screenHeight", "ipAddress", location, 
                         "osVersion", "lastSeen", "isActive", "createdAt",
                         COALESCE("heightCalibration", 0) as "heightCalibration",
-                        "paymentAmount", "playlistId", COALESCE("flowDrawerEnabled", true) as "flowDrawerEnabled"
+                        "paymentAmount", "playlistId", COALESCE("flowDrawerEnabled", true) as "flowDrawerEnabled",
+                        "appMode", "rotation"
                     FROM "AdscapePlayer"
                     ORDER BY "createdAt" DESC
                 `;
@@ -538,7 +549,8 @@ exports.getAllPlayers = async (req, res) => {
                             "screenWidth", "screenHeight", "ipAddress", location, 
                             "osVersion", "lastSeen", "isActive", "createdAt",
                             COALESCE("heightCalibration", 0) as "heightCalibration",
-                            "paymentAmount", "playlistId", COALESCE("flowDrawerEnabled", true) as "flowDrawerEnabled"
+                            "paymentAmount", "playlistId", COALESCE("flowDrawerEnabled", true) as "flowDrawerEnabled",
+                            "appMode", "rotation"
                         FROM "AdscapePlayer"
                         WHERE "screenId" = ANY(${screenIds})
                         ORDER BY "createdAt" DESC
@@ -557,7 +569,7 @@ exports.getAllPlayers = async (req, res) => {
                     FROM "AdscapePlayer"
                     ORDER BY "createdAt" DESC
                 `;
-                players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true }));
+                players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true, appMode: "F1", rotation: "landscape" }));
             } else {
                 const screenIds = req.user.assignedScreenIds;
                 if (screenIds.length === 0) {
@@ -572,7 +584,7 @@ exports.getAllPlayers = async (req, res) => {
                         WHERE "screenId" = ANY(${screenIds})
                         ORDER BY "createdAt" DESC
                     `;
-                    players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true }));
+                    players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true, appMode: "F1", rotation: "landscape" }));
                 }
             }
         }
@@ -620,6 +632,8 @@ exports.getAllPlayers = async (req, res) => {
                 paymentAmount: player.paymentAmount ?? null,
                 playlistId: player.playlistId ?? null,
                 flowDrawerEnabled: player.flowDrawerEnabled ?? true,
+                appMode: player.appMode ?? "F1",
+                rotation: player.rotation ?? "landscape",
                 lastSeen: player.lastSeen,
                 isActive: player.isActive,
                 createdAt: player.createdAt,
@@ -1254,7 +1268,7 @@ exports.deleteFlowDrawerImage = async (req, res, io) => {
 exports.updateScreenConfig = async (req, res, io) => {
     try {
         const { screenId } = req.params;
-        const { flowType, isActive, deviceName, location, heightCalibration, heightCalibrationEnabled, paymentAmount, playlistId, logoUrl, flowDrawerEnabled, flowDrawerSlotCount, hideScreenId, hideAppMargin, smsEnabled, smsLimitPerScreen, resetSmsCount, whatsappEnabled, whatsappLimitPerScreen, resetWhatsAppCount } = req.body || {};
+        const { flowType, isActive, deviceName, location, heightCalibration, heightCalibrationEnabled, paymentAmount, playlistId, logoUrl, flowDrawerEnabled, flowDrawerSlotCount, hideScreenId, hideAppMargin, smsEnabled, smsLimitPerScreen, resetSmsCount, whatsappEnabled, whatsappLimitPerScreen, resetWhatsAppCount, appMode, rotation } = req.body || {};
 
         console.log('[ADSCAPE] Update screen config request:', {
             screenId,
@@ -1263,6 +1277,14 @@ exports.updateScreenConfig = async (req, res, io) => {
         });
 
         const updateData = {};
+
+        if (appMode !== undefined) {
+            updateData.appMode = appMode ? String(appMode) : "F1";
+        }
+
+        if (rotation !== undefined) {
+            updateData.rotation = rotation ? String(rotation) : "landscape";
+        }
 
         if (flowType !== undefined) {
             // Normalize flowType: "Normal" becomes null, otherwise keep as is
@@ -1450,7 +1472,7 @@ exports.updateScreenConfig = async (req, res, io) => {
             }
         }
 
-        if (Object.keys(updateData).length === 0 && playlistId === undefined && flowDrawerSlotCount === undefined && (smsEnabled === undefined && smsLimitPerScreen === undefined) && (whatsappEnabled === undefined && whatsappLimitPerScreen === undefined) && !(resetSmsCount === true) && !(resetWhatsAppCount === true)) {
+        if (Object.keys(updateData).length === 0 && playlistId === undefined && flowDrawerSlotCount === undefined && (smsEnabled === undefined && smsLimitPerScreen === undefined) && (whatsappEnabled === undefined && whatsappLimitPerScreen === undefined) && !(resetSmsCount === true) && !(resetWhatsAppCount === true) && appMode === undefined && rotation === undefined) {
             return res.status(400).json({ error: 'At least one field required for update' });
         }
 
@@ -1469,6 +1491,8 @@ exports.updateScreenConfig = async (req, res, io) => {
             const hasSmsLimitPerScreen = 'smsLimitPerScreen' in updateData;
             const hasWhatsAppEnabled = 'whatsappEnabled' in updateData;
             const hasWhatsAppLimitPerScreen = 'whatsappLimitPerScreen' in updateData;
+            const hasAppMode = 'appMode' in updateData;
+            const hasRotation = 'rotation' in updateData;
             const heightCalibrationValue = updateData.heightCalibration;
             const heightCalibrationEnabledValue = updateData.heightCalibrationEnabled;
             const paymentAmountValue = updateData.paymentAmount;
@@ -1479,10 +1503,12 @@ exports.updateScreenConfig = async (req, res, io) => {
             const smsLimitPerScreenValue = updateData.smsLimitPerScreen;
             const whatsappEnabledValue = updateData.whatsappEnabled;
             const whatsappLimitPerScreenValue = updateData.whatsappLimitPerScreen;
+            const appModeValue = updateData.appMode;
+            const rotationValue = updateData.rotation;
 
-            if (hasHeightCalibration || hasHeightCalibrationEnabled || hasPaymentAmount || hasFlowDrawerEnabled || hasHideScreenId || hasHideAppMargin || hasSmsEnabled || hasSmsLimitPerScreen || hasWhatsAppEnabled || hasWhatsAppLimitPerScreen) {
+            if (hasHeightCalibration || hasHeightCalibrationEnabled || hasPaymentAmount || hasFlowDrawerEnabled || hasHideScreenId || hasHideAppMargin || hasSmsEnabled || hasSmsLimitPerScreen || hasWhatsAppEnabled || hasWhatsAppLimitPerScreen || hasAppMode || hasRotation) {
                 // Remove raw-SQL-managed fields from updateData for Prisma update
-                const { heightCalibration, heightCalibrationEnabled, paymentAmount, flowDrawerEnabled, hideScreenId, hideAppMargin, smsEnabled, smsLimitPerScreen, whatsappEnabled, whatsappLimitPerScreen, ...prismaUpdateData } = updateData;
+                const { heightCalibration, heightCalibrationEnabled, paymentAmount, flowDrawerEnabled, hideScreenId, hideAppMargin, smsEnabled, smsLimitPerScreen, whatsappEnabled, whatsappLimitPerScreen, appMode: appModeField, rotation: rotationField, ...prismaUpdateData } = updateData;
 
                 // Update other fields with Prisma if there are any
                 if (Object.keys(prismaUpdateData).length > 0) {
@@ -1747,6 +1773,56 @@ exports.updateScreenConfig = async (req, res, io) => {
                         }
                     }
                 }
+                if (hasAppMode) {
+                    try {
+                        await prisma.$executeRaw`
+                            UPDATE "AdscapePlayer"
+                            SET "appMode" = ${appModeValue}
+                            WHERE "screenId" = ${String(screenId)}
+                        `;
+                        console.log('[ADSCAPE] Updated appMode to', appModeValue, 'for screen:', screenId);
+                    } catch (e) {
+                        if (e.code === '42703' || e.message?.includes('does not exist')) {
+                            console.log('[ADSCAPE] appMode column does not exist, creating it...');
+                            await prisma.$executeRawUnsafe(`
+                                ALTER TABLE "AdscapePlayer" 
+                                ADD COLUMN IF NOT EXISTS "appMode" VARCHAR(20) DEFAULT 'F1'
+                            `);
+                            await prisma.$executeRaw`
+                                UPDATE "AdscapePlayer"
+                                SET "appMode" = ${appModeValue}
+                                WHERE "screenId" = ${String(screenId)}
+                            `;
+                        } else {
+                            throw e;
+                        }
+                    }
+                }
+                if (hasRotation) {
+                    try {
+                        await prisma.$executeRaw`
+                            UPDATE "AdscapePlayer"
+                            SET "rotation" = ${rotationValue}
+                            WHERE "screenId" = ${String(screenId)}
+                        `;
+                        console.log('[ADSCAPE] Updated rotation to', rotationValue, 'for screen:', screenId);
+                    } catch (e) {
+                        if (e.code === '42703' || e.message?.includes('does not exist')) {
+                            console.log('[ADSCAPE] rotation column does not exist, creating it...');
+                            await prisma.$executeRawUnsafe(`
+                                ALTER TABLE "AdscapePlayer" 
+                                ADD COLUMN IF NOT EXISTS "rotation" VARCHAR(20) DEFAULT 'landscape'
+                            `);
+                            await prisma.$executeRaw`
+                                UPDATE "AdscapePlayer"
+                                SET "rotation" = ${rotationValue}
+                                WHERE "screenId" = ${String(screenId)}
+                            `;
+                        } else {
+                            throw e;
+                        }
+                    }
+                }
 
                 // Fetch updated player using raw SQL to avoid Prisma error
                 try {
@@ -1864,6 +1940,25 @@ exports.updateScreenConfig = async (req, res, io) => {
                 flowType: updateData.flowType
             });
             console.log('[ADSCAPE] Flow type change emitted to screen:', screenId);
+        }
+
+        // Emit real-time update if appMode changed
+        if (io && updateData.appMode !== undefined) {
+            io.to(`screen:${String(screenId)}`).emit('screen-mode-changed', {
+                screenId: String(screenId),
+                appMode: updateData.appMode,
+                mode: updateData.appMode
+            });
+            console.log('[ADSCAPE] Screen mode change emitted to screen:', screenId, 'newMode:', updateData.appMode);
+        }
+
+        // Emit real-time update if rotation changed
+        if (io && updateData.rotation !== undefined) {
+            io.to(`screen:${String(screenId)}`).emit('screen-rotation-changed', {
+                screenId: String(screenId),
+                rotation: updateData.rotation
+            });
+            console.log('[ADSCAPE] Screen rotation change emitted to screen:', screenId, 'newRotation:', updateData.rotation);
         }
 
         // Emit screen-config-changed event when playlist or config is updated

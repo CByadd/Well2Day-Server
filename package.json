@@ -15,6 +15,7 @@
     "prisma:migrate-whatsapp-limits": "prisma db execute --file migration_whatsapp_limits.sql --schema prisma/schema.prisma",
     "prisma:migrate-admin-usage-tracking": "prisma db execute --file migration_admin_usage_tracking.sql --schema prisma/schema.prisma",
     "prisma:migrate-app-mode": "prisma db execute --file migration_add_app_mode_to_adscape_player.sql --schema prisma/schema.prisma",
+    "prisma:migrate-rotation": "prisma db execute --file migration_add_rotation_to_adscape_player.sql --schema prisma/schema.prisma",
     "migrate:admin-message-limits": "node scripts/run-admin-message-limits-migration.js",
     "test:sms": "node scripts/test-sms.js"
   },
