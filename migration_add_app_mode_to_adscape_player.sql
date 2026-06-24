@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "AdscapePlayer" ADD COLUMN IF NOT EXISTS "appMode" VARCHAR(20) DEFAULT 'F1';

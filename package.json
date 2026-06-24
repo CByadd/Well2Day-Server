@@ -14,11 +14,13 @@
     "prisma:migrate-admin-message-limits": "prisma db execute --file migration_admin_message_limits.sql --schema prisma/schema.prisma",
     "prisma:migrate-whatsapp-limits": "prisma db execute --file migration_whatsapp_limits.sql --schema prisma/schema.prisma",
     "prisma:migrate-admin-usage-tracking": "prisma db execute --file migration_admin_usage_tracking.sql --schema prisma/schema.prisma",
+    "prisma:migrate-app-mode": "prisma db execute --file migration_add_app_mode_to_adscape_player.sql --schema prisma/schema.prisma",
     "migrate:admin-message-limits": "node scripts/run-admin-message-limits-migration.js",
     "test:sms": "node scripts/test-sms.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
+    "@prisma/engines": "^5.20.0",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
