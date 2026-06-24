@@ -362,7 +362,7 @@ exports.getPlayer = async (req, res) => {
         let whatsappLimitPerScreen = null;
         let whatsappSentCount = 0;
         let appMode = "F1";
-        let rotation = "landscape";
+        let rotation = "portrait";
         try {
             const configResult = await prisma.$queryRaw`
                 SELECT "playlistId", "heightCalibration", "heightCalibrationEnabled", "paymentAmount", "logoUrl", "flowDrawerEnabled", "flowDrawerSlotCount", "hideScreenId", "hideAppMargin", "appMode", "rotation",
@@ -569,7 +569,7 @@ exports.getAllPlayers = async (req, res) => {
                     FROM "AdscapePlayer"
                     ORDER BY "createdAt" DESC
                 `;
-                players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true, appMode: "F1", rotation: "landscape" }));
+                players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true, appMode: "F1", rotation: "portrait" }));
             } else {
                 const screenIds = req.user.assignedScreenIds;
                 if (screenIds.length === 0) {
@@ -584,7 +584,7 @@ exports.getAllPlayers = async (req, res) => {
                         WHERE "screenId" = ANY(${screenIds})
                         ORDER BY "createdAt" DESC
                     `;
-                    players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true, appMode: "F1", rotation: "landscape" }));
+                    players = rawPlayers.map(p => ({ ...p, heightCalibration: 0, paymentAmount: null, playlistId: null, flowDrawerEnabled: true, appMode: "F1", rotation: "portrait" }));
                 }
             }
         }
@@ -633,7 +633,7 @@ exports.getAllPlayers = async (req, res) => {
                 playlistId: player.playlistId ?? null,
                 flowDrawerEnabled: player.flowDrawerEnabled ?? true,
                 appMode: player.appMode ?? "F1",
-                rotation: player.rotation ?? "landscape",
+                rotation: player.rotation ?? "portrait",
                 lastSeen: player.lastSeen,
                 isActive: player.isActive,
                 createdAt: player.createdAt,
@@ -1283,7 +1283,7 @@ exports.updateScreenConfig = async (req, res, io) => {
         }
 
         if (rotation !== undefined) {
-            updateData.rotation = rotation ? String(rotation) : "landscape";
+            updateData.rotation = rotation ? String(rotation) : "portrait";
         }
 
         if (flowType !== undefined) {

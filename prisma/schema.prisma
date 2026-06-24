@@ -52,7 +52,7 @@ model AdscapePlayer {
   heightCalibrationEnabled Boolean? @default(true)
   defaultAssetUrl          String?  @db.VarChar(500)
   appMode                  String?  @db.VarChar(20) @default("F1")
-  rotation                 String?  @db.VarChar(20) @default("landscape")
+  rotation                 String?  @db.VarChar(20) @default("portrait")
 }
 
 model User {
