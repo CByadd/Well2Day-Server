@@ -1961,6 +1961,15 @@ exports.updateScreenConfig = async (req, res, io) => {
             console.log('[ADSCAPE] Screen ID visibility change emitted to screen:', screenId, 'hideScreenId:', updateData.hideScreenId);
         }
 
+        // Emit real-time update if hideAppMargin changed
+        if (io && updateData.hideAppMargin !== undefined) {
+            io.to(`screen:${String(screenId)}`).emit('hide-app-margin-changed', {
+                screenId: String(screenId),
+                hideAppMargin: updateData.hideAppMargin
+            });
+            console.log('[ADSCAPE] Screen app margin visibility change emitted to screen:', screenId, 'hideAppMargin:', updateData.hideAppMargin);
+        }
+
         // Emit real-time update if rotation changed
         if (io && updateData.rotation !== undefined) {
             io.to(`screen:${String(screenId)}`).emit('screen-rotation-changed', {
