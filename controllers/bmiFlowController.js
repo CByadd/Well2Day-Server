@@ -1172,7 +1172,7 @@ exports.getUserAnalytics = async (req, res) => {
         const streak = calculateStreak(bmiRecords);
 
         // Get unique screen IDs for all records and fetch their device names and locations
-        const allScreenIds = [...new Set(bmiRecords.map(record => record.screenId))];
+        const allScreenIds = [...new Set(bmiRecords.map(record => String(record.screenId).trim()))];
         const screenPlayers = await prisma.adscapePlayer.findMany({
             where: {
                 screenId: { in: allScreenIds }
@@ -1184,30 +1184,32 @@ exports.getUserAnalytics = async (req, res) => {
             }
         });
         
-        // Create a map of screenId to player object
+        // Create a map of screenId to player object (support exact and lowercase matching)
         const playerMap = {};
         screenPlayers.forEach(player => {
-            playerMap[player.screenId] = player;
+            if (player && player.screenId) {
+                const trimmedId = String(player.screenId).trim();
+                playerMap[trimmedId] = player;
+                playerMap[trimmedId.toLowerCase()] = player;
+            }
         });
 
-        // Helper function to resolve human-friendly screen name
+        // Helper function to resolve human-friendly screen name (e.g. Android RTC)
         const getFormattedScreenName = (record) => {
-            const player = playerMap[record.screenId];
-            if (player?.deviceName && player.deviceName.trim() !== '' && player.deviceName !== record.screenId) {
+            if (!record || !record.screenId) return 'Unknown Screen';
+            const sId = String(record.screenId).trim();
+            const player = playerMap[sId] || playerMap[sId.toLowerCase()];
+
+            if (player && player.deviceName && player.deviceName.trim() !== '') {
                 return player.deviceName.trim();
             }
-            if (player?.location && player.location.trim() !== '') {
+            if (player && player.location && player.location.trim() !== '') {
                 return player.location.trim();
             }
             if (record.location && record.location.trim() !== '') {
                 return record.location.trim();
             }
-            if (!record.screenId) return 'Unknown Screen';
-            const strId = String(record.screenId).trim();
-            if (strId.toLowerCase().startsWith('screen')) {
-                return strId;
-            }
-            return `Screen ${strId}`;
+            return sId;
         };
 
         // Get recent BMI (most recent record)
