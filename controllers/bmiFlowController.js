@@ -1171,7 +1171,7 @@ exports.getUserAnalytics = async (req, res) => {
         // Calculate streak
         const streak = calculateStreak(bmiRecords);
 
-        // Get unique screen IDs for all records and fetch their device names
+        // Get unique screen IDs for all records and fetch their device names and locations
         const allScreenIds = [...new Set(bmiRecords.map(record => record.screenId))];
         const screenPlayers = await prisma.adscapePlayer.findMany({
             where: {
@@ -1179,15 +1179,36 @@ exports.getUserAnalytics = async (req, res) => {
             },
             select: {
                 screenId: true,
-                deviceName: true
+                deviceName: true,
+                location: true
             }
         });
         
-        // Create a map of screenId to deviceName
-        const screenNameMap = {};
+        // Create a map of screenId to player object
+        const playerMap = {};
         screenPlayers.forEach(player => {
-            screenNameMap[player.screenId] = player.deviceName || player.screenId;
+            playerMap[player.screenId] = player;
         });
+
+        // Helper function to resolve human-friendly screen name
+        const getFormattedScreenName = (record) => {
+            const player = playerMap[record.screenId];
+            if (player?.deviceName && player.deviceName.trim() !== '' && player.deviceName !== record.screenId) {
+                return player.deviceName.trim();
+            }
+            if (player?.location && player.location.trim() !== '') {
+                return player.location.trim();
+            }
+            if (record.location && record.location.trim() !== '') {
+                return record.location.trim();
+            }
+            if (!record.screenId) return 'Unknown Screen';
+            const strId = String(record.screenId).trim();
+            if (strId.toLowerCase().startsWith('screen')) {
+                return strId;
+            }
+            return `Screen ${strId}`;
+        };
 
         // Get recent BMI (most recent record)
         const recentBMI = {
@@ -1198,7 +1219,7 @@ exports.getUserAnalytics = async (req, res) => {
             weight: bmiRecords[0].weightKg,
             timestamp: bmiRecords[0].timestamp.toISOString(),
             screenId: bmiRecords[0].screenId,
-            screenName: screenNameMap[bmiRecords[0].screenId] || bmiRecords[0].screenId,
+            screenName: getFormattedScreenName(bmiRecords[0]),
             deviceId: bmiRecords[0].deviceId,
             location: bmiRecords[0].location,
             fortune: bmiRecords[0].fortune
@@ -1218,7 +1239,7 @@ exports.getUserAnalytics = async (req, res) => {
             weight: record.weightKg,
             category: record.category,
             screenId: record.screenId,
-            screenName: screenNameMap[record.screenId] || record.screenId,
+            screenName: getFormattedScreenName(record),
             timestamp: record.timestamp.toISOString()
         })).reverse(); // Oldest first for chart
         
