@@ -1170,34 +1170,12 @@ exports.getUserAnalytics = async (req, res) => {
         
         // Calculate streak
         const streak = calculateStreak(bmiRecords);
-        
-        // Get recent BMI (most recent record)
-        const recentBMI = {
-            id: bmiRecords[0].id,
-            bmi: bmiRecords[0].bmi,
-            category: bmiRecords[0].category,
-            height: bmiRecords[0].heightCm,
-            weight: bmiRecords[0].weightKg,
-            timestamp: bmiRecords[0].timestamp.toISOString(),
-            screenId: bmiRecords[0].screenId,
-            deviceId: bmiRecords[0].deviceId,
-            location: bmiRecords[0].location,
-            fortune: bmiRecords[0].fortune
-        };
-        
-        // Calculate trends (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const recentRecords = bmiRecords.filter(record => 
-            new Date(record.timestamp) >= thirtyDaysAgo
-        );
-        
-        // Get unique screen IDs and fetch their device names
-        const screenIds = [...new Set(recentRecords.map(record => record.screenId))];
+
+        // Get unique screen IDs for all records and fetch their device names
+        const allScreenIds = [...new Set(bmiRecords.map(record => record.screenId))];
         const screenPlayers = await prisma.adscapePlayer.findMany({
             where: {
-                screenId: { in: screenIds }
+                screenId: { in: allScreenIds }
             },
             select: {
                 screenId: true,
@@ -1210,6 +1188,29 @@ exports.getUserAnalytics = async (req, res) => {
         screenPlayers.forEach(player => {
             screenNameMap[player.screenId] = player.deviceName || player.screenId;
         });
+
+        // Get recent BMI (most recent record)
+        const recentBMI = {
+            id: bmiRecords[0].id,
+            bmi: bmiRecords[0].bmi,
+            category: bmiRecords[0].category,
+            height: bmiRecords[0].heightCm,
+            weight: bmiRecords[0].weightKg,
+            timestamp: bmiRecords[0].timestamp.toISOString(),
+            screenId: bmiRecords[0].screenId,
+            screenName: screenNameMap[bmiRecords[0].screenId] || bmiRecords[0].screenId,
+            deviceId: bmiRecords[0].deviceId,
+            location: bmiRecords[0].location,
+            fortune: bmiRecords[0].fortune
+        };
+        
+        // Calculate trends (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const recentRecords = bmiRecords.filter(record => 
+            new Date(record.timestamp) >= thirtyDaysAgo
+        );
         
         const trends = recentRecords.map(record => ({
             date: record.timestamp.toISOString().split('T')[0],
