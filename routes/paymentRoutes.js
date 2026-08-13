@@ -9,7 +9,7 @@ module.exports = (io) => {
     router.get('/payment/key', paymentController.getKey);
 
     // POST /api/payment/create-order -> Create Razorpay order
-    router.post('/payment/create-order', paymentController.createOrder);
+    router.post('/payment/create-order', (req, res) => paymentController.createOrder(req, res, io));
 
     // POST /api/payment/verify -> Verify payment signature and notify Android
     router.post('/payment/verify', (req, res) => paymentController.verifyPayment(req, res, io, bmiFlowController));

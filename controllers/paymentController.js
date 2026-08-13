@@ -42,9 +42,24 @@ if (MOCK_PAYMENT_MODE) {
  * POST /api/payment/create-order
  * Create a payment order
  */
-exports.createOrder = async (req, res) => {
+exports.createOrder = async (req, res, io) => {
   try {
     const { amount, currency = 'INR', receipt, notes } = req.body;
+
+    // Notify the kiosk the instant the customer's phone starts checkout, so the
+    // QR screen can switch from "scan" to "payment processing" — without this
+    // there is no signal to Android between order creation and payment-success,
+    // so the kiosk shows nothing while the customer is actively paying.
+    const notifyProcessing = () => {
+      const screenId = notes?.screenId;
+      if (screenId && io) {
+        io.to(`screen:${String(screenId)}`).emit('payment-processing', {
+          screenId: String(screenId),
+          bmiId: notes?.bmiId || null,
+          userId: notes?.userId || null
+        });
+      }
+    };
 
     // Validate amount
     if (amount === null || amount === undefined || amount === '') {
@@ -92,6 +107,7 @@ exports.createOrder = async (req, res) => {
       });
 
       console.log('[PAYMENT] 🧪 MOCK: Order created successfully:', mockOrderId);
+      notifyProcessing();
 
       return res.json({
         ok: true,
@@ -127,6 +143,7 @@ exports.createOrder = async (req, res) => {
       });
 
       console.log('[RAZORPAY] Order created successfully:', order.id);
+      notifyProcessing();
 
       return res.json({
         ok: true,
