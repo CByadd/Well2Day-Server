@@ -309,6 +309,7 @@ app.use('/api/folders', require('./routes/folderRoutes')(io));
 app.use('/api', require('./routes/playlistRoutes')(io));
 app.use('/api', require('./routes/scheduleRoutes'));
 app.use('/api', require('./routes/defaultAssetRoutes'));
+app.use('/api', require('./routes/appReleaseRoutes')(io));
 const paymentRoutes = require('./routes/paymentRoutes');
 app.use('/api', paymentRoutes(io));
 console.log('[SERVER] Payment routes mounted at /api');
