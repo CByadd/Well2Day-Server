@@ -41,6 +41,11 @@ module.exports = (io) => {
         res.json({ release: { versionCode, versionName, url, sha256, size } });
     });
 
+    // Phone (Termux) one-time box migration script: sh -c "$(curl -fsSL https://api.well2day.in/api/app-release/phone.sh)"
+    router.get('/app-release/phone.sh', (_req, res) => {
+        res.type('text/x-shellscript').sendFile(path.join(__dirname, '..', 'scripts', 'phone_reinstall_release_key.sh'));
+    });
+
     // Kiosk: POST /api/app-release/report { screenId, packageName, status: installed|failed|rolled_back, versionCode, error }
     router.post('/app-release/report', async (req, res) => {
         const { screenId, packageName, status, versionCode, error } = req.body || {};
