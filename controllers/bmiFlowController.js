@@ -227,7 +227,14 @@ exports.createBMI = async (req, res, io) => {
             ? computeBMI(parsedHeightCm, parsedWeightKg)
             : { bmi: null, category: 'weight_only' };
 		const bmiId = uuidv4();
-		const timestamp = new Date().toISOString();
+		// Offline readings uploaded later by the app carry their original time (epoch ms).
+		// Kiosk clocks can be wrong (no RTC/NTP yet after boot), so only trust it within
+		// the last 30 days and not in the future; otherwise use server time.
+		const measuredAt = Number(req.body?.measuredAt);
+		const now = Date.now();
+		const timestamp = Number.isFinite(measuredAt) && measuredAt <= now + 5 * 60 * 1000 && measuredAt >= now - 30 * 24 * 60 * 60 * 1000
+			? new Date(measuredAt).toISOString()
+			: new Date(now).toISOString();
 		// Fortune: use client-provided (Android local pick) when present, else generate for F2, else null for F1/F3
         const effectiveFlowType = playerFlowType || appVersion;
         const clientFortune = (bodyFortune != null && String(bodyFortune).trim()) ? String(bodyFortune).trim() : null;
